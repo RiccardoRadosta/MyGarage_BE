@@ -24,6 +24,13 @@ public record MaintenanceDetailResponse(
         Instant createdAt,
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
         Instant updatedAt,
-        VehicleSummary vehicle
+        VehicleSummary vehicle,
+        Boolean hasAttachment
 ) {
+    public MaintenanceDetailResponse(UUID id, UUID vehicleId, MaintenanceType type, String typeLabel,
+                                     String customDescription, LocalDate date, Integer mileage,
+                                     BigDecimal cost, String notes, Instant createdAt, Instant updatedAt,
+                                     VehicleSummary vehicle) {
+        this(id, vehicleId, type, typeLabel, customDescription, date, mileage, cost, notes, createdAt, updatedAt, vehicle, false);
+    }
 }

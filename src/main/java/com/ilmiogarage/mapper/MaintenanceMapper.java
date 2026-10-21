@@ -4,6 +4,8 @@ import com.ilmiogarage.dto.maintenance.MaintenanceDetailResponse;
 import com.ilmiogarage.dto.maintenance.MaintenanceResponse;
 import com.ilmiogarage.dto.vehicle.VehicleSummary;
 import com.ilmiogarage.model.entity.MaintenanceRecord;
+import com.ilmiogarage.repository.MaintenanceAttachmentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.RoundingMode;
@@ -12,12 +14,28 @@ import java.math.RoundingMode;
 public class MaintenanceMapper {
 
     private final VehicleMapper vehicleMapper;
+    private final MaintenanceAttachmentRepository attachmentRepository;
+
+    @Autowired
+    public MaintenanceMapper(VehicleMapper vehicleMapper, MaintenanceAttachmentRepository attachmentRepository) {
+        this.vehicleMapper = vehicleMapper;
+        this.attachmentRepository = attachmentRepository;
+    }
 
     public MaintenanceMapper(VehicleMapper vehicleMapper) {
-        this.vehicleMapper = vehicleMapper;
+        this(vehicleMapper, null);
     }
 
     public MaintenanceResponse toResponse(MaintenanceRecord record) {
+        if (record == null) {
+            return null;
+        }
+        boolean hasAttachment = attachmentRepository != null && record.getId() != null
+                && attachmentRepository.existsByMaintenanceId(record.getId());
+        return toResponse(record, hasAttachment);
+    }
+
+    public MaintenanceResponse toResponse(MaintenanceRecord record, boolean hasAttachment) {
         if (record == null) {
             return null;
         }
@@ -32,11 +50,21 @@ public class MaintenanceMapper {
                 record.getCost() != null ? record.getCost().setScale(2, RoundingMode.HALF_UP) : null,
                 record.getNotes(),
                 record.getCreatedAt(),
-                record.getUpdatedAt()
+                record.getUpdatedAt(),
+                hasAttachment
         );
     }
 
     public MaintenanceDetailResponse toDetailResponse(MaintenanceRecord record) {
+        if (record == null) {
+            return null;
+        }
+        boolean hasAttachment = attachmentRepository != null && record.getId() != null
+                && attachmentRepository.existsByMaintenanceId(record.getId());
+        return toDetailResponse(record, hasAttachment);
+    }
+
+    public MaintenanceDetailResponse toDetailResponse(MaintenanceRecord record, boolean hasAttachment) {
         if (record == null) {
             return null;
         }
@@ -53,7 +81,8 @@ public class MaintenanceMapper {
                 record.getNotes(),
                 record.getCreatedAt(),
                 record.getUpdatedAt(),
-                vehicleSummary
+                vehicleSummary,
+                hasAttachment
         );
     }
 }

@@ -216,6 +216,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaxUploadSizeExceeded(org.springframework.web.multipart.MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        String traceId = generateTraceId();
+        log.warn("File upload exceeds max size limit [{}]: {}", traceId, ex.getMessage());
+
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "Payload Too Large",
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                "La dimensione dell'allegato supera il limite massimo consentito di 5 MB.",
+                ErrorCode.FILE_TOO_LARGE.name(),
+                request.getRequestURI(),
+                null,
+                traceId
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
         String traceId = generateTraceId();
