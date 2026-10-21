@@ -1,0 +1,12 @@
+package com.ilmiogarage.exception;
+
+public enum ErrorCode {
+    VALIDATION_ERROR,
+    UNAUTHORIZED,
+    EMAIL_ALREADY_EXISTS,
+    RESOURCE_NOT_FOUND,
+    PLATE_ALREADY_EXISTS,
+    INVALID_MAINTENANCE_TYPE,
+    INVALID_DATE,
+    INTERNAL_ERROR
+}
