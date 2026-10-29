@@ -77,7 +77,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private boolean isRateLimitedPath(String path) {
-        return path != null && (path.endsWith("/auth/login") || path.endsWith("/auth/register"));
+        return path != null && (
+                path.endsWith("/auth/login") ||
+                path.endsWith("/auth/register") ||
+                path.endsWith("/auth/google") ||
+                path.endsWith("/auth/forgot-password") ||
+                path.endsWith("/auth/reset-password")
+        );
     }
 
     private boolean isRateLimited(String key) {

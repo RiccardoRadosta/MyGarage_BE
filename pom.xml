@@ -33,6 +33,11 @@
         <JWT_REFRESH_EXPIRATION_SECONDS>2592000</JWT_REFRESH_EXPIRATION_SECONDS>
         <CORS_ALLOWED_ORIGINS>http://localhost:8081,http://localhost:19006,exp://192.168.1.100:8081</CORS_ALLOWED_ORIGINS>
         <PORT>8080</PORT>
+        <GOOGLE_CLIENT_IDS></GOOGLE_CLIENT_IDS>
+        <BREVO_API_KEY></BREVO_API_KEY>
+        <BREVO_SENDER_EMAIL>no-reply@ilmiogarage.com</BREVO_SENDER_EMAIL>
+        <BREVO_SENDER_NAME>Il Mio Garage</BREVO_SENDER_NAME>
+        <APP_PUBLIC_BASE_URL>https://ilmiogarage.com</APP_PUBLIC_BASE_URL>
     </properties>
 
     <dependencies>
@@ -93,6 +98,18 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- Google API Client for Google ID Token verification -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>2.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-gson</artifactId>
+            <version>1.45.0</version>
         </dependency>
 
         <!-- Testing -->
@@ -162,6 +179,11 @@
                         <JWT_REFRESH_EXPIRATION_SECONDS>${JWT_REFRESH_EXPIRATION_SECONDS}</JWT_REFRESH_EXPIRATION_SECONDS>
                         <CORS_ALLOWED_ORIGINS>${CORS_ALLOWED_ORIGINS}</CORS_ALLOWED_ORIGINS>
                         <PORT>${PORT}</PORT>
+                        <GOOGLE_CLIENT_IDS>${GOOGLE_CLIENT_IDS}</GOOGLE_CLIENT_IDS>
+                        <BREVO_API_KEY>${BREVO_API_KEY}</BREVO_API_KEY>
+                        <BREVO_SENDER_EMAIL>${BREVO_SENDER_EMAIL}</BREVO_SENDER_EMAIL>
+                        <BREVO_SENDER_NAME>${BREVO_SENDER_NAME}</BREVO_SENDER_NAME>
+                        <APP_PUBLIC_BASE_URL>${APP_PUBLIC_BASE_URL}</APP_PUBLIC_BASE_URL>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

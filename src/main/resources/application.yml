@@ -54,6 +54,18 @@ app:
   rate-limit:
     enabled: true
     auth-requests-per-minute: 20
+  google:
+    client-ids: ${GOOGLE_CLIENT_IDS:${GOOGLE_CLIENT_ID:}}
+  public-base-url: ${APP_PUBLIC_BASE_URL:https://ilmiogarage.com}
+  brevo:
+    api-key: ${BREVO_API_KEY:}
+    sender-email: ${BREVO_SENDER_EMAIL:no-reply@ilmiogarage.com}
+    sender-name: ${BREVO_SENDER_NAME:Il Mio Garage}
+    base-url: ${BREVO_BASE_URL:https://api.brevo.com/v3}
+    connect-timeout-seconds: ${BREVO_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${BREVO_READ_TIMEOUT_SECONDS:10}
+  password-reset:
+    expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:30}
 
 springdoc:
   api-docs:

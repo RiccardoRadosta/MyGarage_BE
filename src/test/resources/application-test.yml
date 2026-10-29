@@ -33,3 +33,8 @@ app:
   rate-limit:
     enabled: false
     auth-requests-per-minute: 1000
+  brevo:
+    api-key: ""
+  public-base-url: https://ilmiogarage.com
+  password-reset:
+    expiration-minutes: 30

@@ -18,8 +18,11 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    @Column(name = "google_sub", length = 255, unique = true)
+    private String googleSub;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -31,10 +34,15 @@ public class User {
     }
 
     public User(UUID id, String name, String email, String passwordHash) {
+        this(id, name, email, passwordHash, null);
+    }
+
+    public User(UUID id, String name, String email, String passwordHash, String googleSub) {
         this.id = id != null ? id : UUID.randomUUID();
         this.name = name;
         this.email = email != null ? email.trim().toLowerCase() : null;
         this.passwordHash = passwordHash;
+        this.googleSub = googleSub;
     }
 
     @PrePersist
@@ -90,6 +98,14 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getGoogleSub() {
+        return googleSub;
+    }
+
+    public void setGoogleSub(String googleSub) {
+        this.googleSub = googleSub;
     }
 
     public Instant getCreatedAt() {
