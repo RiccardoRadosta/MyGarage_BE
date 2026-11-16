@@ -220,4 +220,50 @@ class MaintenanceIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    @DisplayName("Creazione manutenzioni con tipologie BOLLO e INSURANCE viene accettata e restituisce etichette corrette")
+    void createMaintenance_bolloAndInsurance_success() throws Exception {
+        // 1. Creazione BOLLO
+        String bolloJson = """
+                {
+                    "type": "BOLLO",
+                    "date": "%s",
+                    "mileage": 51000,
+                    "cost": 180.50,
+                    "notes": "Bollo auto annuale"
+                }
+                """.formatted(LocalDate.now().minusDays(5));
+
+        mockMvc.perform(post("/api/v1/vehicles/" + vehicleId + "/maintenances")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bolloJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("BOLLO"))
+                .andExpect(jsonPath("$.typeLabel").value("Bollo"))
+                .andExpect(jsonPath("$.cost").value(180.50))
+                .andExpect(jsonPath("$.notes").value("Bollo auto annuale"));
+
+        // 2. Creazione INSURANCE
+        String insuranceJson = """
+                {
+                    "type": "INSURANCE",
+                    "date": "%s",
+                    "mileage": 52000,
+                    "cost": 650.00,
+                    "notes": "RCA e Furto/Incendio"
+                }
+                """.formatted(LocalDate.now().minusDays(2));
+
+        mockMvc.perform(post("/api/v1/vehicles/" + vehicleId + "/maintenances")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(insuranceJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("INSURANCE"))
+                .andExpect(jsonPath("$.typeLabel").value("Assicurazione"))
+                .andExpect(jsonPath("$.cost").value(650.00))
+                .andExpect(jsonPath("$.notes").value("RCA e Furto/Incendio"));
+    }
 }

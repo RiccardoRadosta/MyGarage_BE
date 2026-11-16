@@ -142,4 +142,62 @@ class DashboardAndCostIntegrationTest {
                 .andExpect(jsonPath("$.byType[0].type").value("OIL_CHANGE"))
                 .andExpect(jsonPath("$.byType[0].total").value(100.00));
     }
+
+    @Test
+    @DisplayName("Costi per BOLLO e INSURANCE vengono conteggiati separatamente nel riepilogo costi")
+    void costSummary_bolloAndInsurance_separateAccounting() throws Exception {
+        int currentYear = LocalDate.now().getYear();
+
+        // Registra Bollo (150.00)
+        String bolloJson = """
+                {
+                    "type": "BOLLO",
+                    "date": "%s",
+                    "mileage": 61000,
+                    "cost": 150.00,
+                    "notes": "Tassa automobilistica"
+                }
+                """.formatted(LocalDate.of(currentYear, 2, 10));
+
+        mockMvc.perform(post("/api/v1/vehicles/" + vehicle1Id + "/maintenances")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bolloJson))
+                .andExpect(status().isCreated());
+
+        // Registra Assicurazione (500.00)
+        String insuranceJson = """
+                {
+                    "type": "INSURANCE",
+                    "date": "%s",
+                    "mileage": 62000,
+                    "cost": 500.00,
+                    "notes": "Polizza semestrale"
+                }
+                """.formatted(LocalDate.of(currentYear, 3, 15));
+
+        mockMvc.perform(post("/api/v1/vehicles/" + vehicle1Id + "/maintenances")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(insuranceJson))
+                .andExpect(status().isCreated());
+
+        // Verifica Cost Summary
+        mockMvc.perform(get("/api/v1/costs/summary?year=" + currentYear)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSpent").value(650.00))
+                .andExpect(jsonPath("$.yearSpent").value(650.00))
+                .andExpect(jsonPath("$.byType", hasSize(2)))
+                // Il primo elemento (ordinato decrescente per importo) è INSURANCE (500.00)
+                .andExpect(jsonPath("$.byType[0].type").value("INSURANCE"))
+                .andExpect(jsonPath("$.byType[0].typeLabel").value("Assicurazione"))
+                .andExpect(jsonPath("$.byType[0].total").value(500.00))
+                .andExpect(jsonPath("$.byType[0].count").value(1))
+                // Il secondo elemento è BOLLO (150.00)
+                .andExpect(jsonPath("$.byType[1].type").value("BOLLO"))
+                .andExpect(jsonPath("$.byType[1].typeLabel").value("Bollo"))
+                .andExpect(jsonPath("$.byType[1].total").value(150.00))
+                .andExpect(jsonPath("$.byType[1].count").value(1));
+    }
 }

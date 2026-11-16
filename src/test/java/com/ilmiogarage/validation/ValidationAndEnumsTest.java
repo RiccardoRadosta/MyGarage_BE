@@ -56,10 +56,28 @@ class ValidationAndEnumsTest {
         assertThat(MaintenanceType.INSPECTION.getDefaultLabel()).isEqualTo("Revisione");
         assertThat(MaintenanceType.BATTERY.getDefaultLabel()).isEqualTo("Batteria");
         assertThat(MaintenanceType.TIMING_BELT.getDefaultLabel()).isEqualTo("Distribuzione");
+        assertThat(MaintenanceType.BOLLO.getDefaultLabel()).isEqualTo("Bollo");
+        assertThat(MaintenanceType.INSURANCE.getDefaultLabel()).isEqualTo("Assicurazione");
         assertThat(MaintenanceType.OTHER.getDefaultLabel()).isEqualTo("Altro");
 
         assertThat(MaintenanceType.OTHER.resolveLabel("Sostituzione candele")).isEqualTo("Sostituzione candele");
         assertThat(MaintenanceType.OIL_CHANGE.resolveLabel("Qualsiasi")).isEqualTo("Cambio olio");
+        assertThat(MaintenanceType.BOLLO.resolveLabel("Ignorato")).isEqualTo("Bollo");
+        assertThat(MaintenanceType.INSURANCE.resolveLabel("Ignorato")).isEqualTo("Assicurazione");
+    }
+
+    @Test
+    @DisplayName("MaintenanceType deserializzazione e parsing con fromString")
+    void maintenanceType_fromString() {
+        assertThat(MaintenanceType.fromString("bollo")).isEqualTo(MaintenanceType.BOLLO);
+        assertThat(MaintenanceType.fromString("BOLLO")).isEqualTo(MaintenanceType.BOLLO);
+        assertThat(MaintenanceType.fromString("  insurance  ")).isEqualTo(MaintenanceType.INSURANCE);
+        assertThat(MaintenanceType.fromString("INSURANCE")).isEqualTo(MaintenanceType.INSURANCE);
+        assertThat(MaintenanceType.fromString(null)).isNull();
+
+        assertThatThrownBy(() -> MaintenanceType.fromString("INVALIDO"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tipo di manutenzione non valido");
     }
 
     @Test

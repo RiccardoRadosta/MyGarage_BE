@@ -11,6 +11,8 @@ public enum MaintenanceType {
     INSPECTION("Revisione"),
     BATTERY("Batteria"),
     TIMING_BELT("Distribuzione"),
+    BOLLO("Bollo"),
+    INSURANCE("Assicurazione"),
     OTHER("Altro");
 
     private final String defaultLabel;
