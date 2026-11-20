@@ -21,6 +21,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    placeholders:
+      createPrimaryVehicleIndexSql: "-- H2 does not support partial indexes; index is applied on PostgreSQL"
+      createPurchaseTokenIndexSql: "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_subscriptions_provider_token ON user_subscriptions (provider, purchase_token);"
 
 app:
   jwt:

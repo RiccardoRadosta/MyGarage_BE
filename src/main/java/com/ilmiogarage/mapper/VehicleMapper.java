@@ -25,6 +25,7 @@ public class VehicleMapper {
                 vehicle.getYear(),
                 vehicle.getPlate(),
                 vehicle.getMileage(),
+                vehicle.isPrimary(),
                 vehicle.getCreatedAt(),
                 vehicle.getUpdatedAt(),
                 lastMaintenance
@@ -43,6 +44,7 @@ public class VehicleMapper {
                 vehicle.getYear(),
                 vehicle.getPlate(),
                 vehicle.getMileage(),
+                vehicle.isPrimary(),
                 vehicle.getCreatedAt(),
                 vehicle.getUpdatedAt(),
                 lastMaintenance,

@@ -1,8 +1,10 @@
 package com.ilmiogarage.controller;
 
+import com.ilmiogarage.dto.subscription.UserPlanInfo;
 import com.ilmiogarage.dto.user.UpdateUserRequest;
 import com.ilmiogarage.dto.user.UserResponse;
 import com.ilmiogarage.security.SecurityUtils;
+import com.ilmiogarage.service.SubscriptionService;
 import com.ilmiogarage.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,9 +28,23 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final SubscriptionService subscriptionService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, SubscriptionService subscriptionService) {
         this.userService = userService;
+        this.subscriptionService = subscriptionService;
+    }
+
+    @GetMapping("/me/plan")
+    @Operation(summary = "Ottieni stato piano utente", description = "Restituisce le informazioni sul piano Free/Premium dell'utente autenticato e sul veicolo principale.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Stato piano recuperato con successo"),
+            @ApiResponse(responseCode = "401", description = "Non autenticato")
+    })
+    public ResponseEntity<UserPlanInfo> getUserPlan() {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UserPlanInfo response = subscriptionService.getUserPlanInfo(currentUserId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")

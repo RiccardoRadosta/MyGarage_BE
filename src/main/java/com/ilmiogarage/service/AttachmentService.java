@@ -3,7 +3,9 @@ package com.ilmiogarage.service;
 import com.ilmiogarage.dto.maintenance.AttachmentMetadataResponse;
 import com.ilmiogarage.exception.ErrorCode;
 import com.ilmiogarage.exception.InvalidAttachmentException;
+import com.ilmiogarage.exception.PrimaryVehicleSelectionRequiredException;
 import com.ilmiogarage.exception.ResourceNotFoundException;
+import com.ilmiogarage.exception.UpgradeRequiredException;
 import com.ilmiogarage.model.entity.MaintenanceAttachment;
 import com.ilmiogarage.model.entity.MaintenanceRecord;
 import com.ilmiogarage.repository.MaintenanceAttachmentRepository;
@@ -32,18 +34,30 @@ public class AttachmentService {
 
     private final MaintenanceAttachmentRepository attachmentRepository;
     private final MaintenanceRecordRepository maintenanceRepository;
+    private final SubscriptionService subscriptionService;
 
     public AttachmentService(
             MaintenanceAttachmentRepository attachmentRepository,
-            MaintenanceRecordRepository maintenanceRepository) {
+            MaintenanceRecordRepository maintenanceRepository,
+            SubscriptionService subscriptionService) {
         this.attachmentRepository = attachmentRepository;
         this.maintenanceRepository = maintenanceRepository;
+        this.subscriptionService = subscriptionService;
     }
 
     @Transactional
     public AttachmentMetadataResponse uploadAttachment(UUID maintenanceId, UUID ownerId, MultipartFile file) {
         MaintenanceRecord record = maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Intervento non trovato."));
+
+        if (!subscriptionService.isPremium(ownerId)) {
+            if (subscriptionService.isPrimaryVehicleSelectionRequired(ownerId)) {
+                log.warn("Attachment upload rejected: user {} must select primary vehicle first", ownerId);
+                throw new PrimaryVehicleSelectionRequiredException();
+            }
+            log.warn("Attachment upload rejected: user {} is Free", ownerId);
+            throw new UpgradeRequiredException("Il caricamento e la sostituzione di allegati sono riservati agli utenti Premium.");
+        }
 
         if (file == null || file.isEmpty()) {
             throw new InvalidAttachmentException(ErrorCode.VALIDATION_ERROR, "Il file selezionato è vuoto o mancante.");
@@ -130,6 +144,15 @@ public class AttachmentService {
         // Verifica ownership dell'intervento
         if (!maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId).isPresent()) {
             throw new ResourceNotFoundException("Intervento non trovato.");
+        }
+
+        if (!subscriptionService.isPremium(ownerId)) {
+            if (subscriptionService.isPrimaryVehicleSelectionRequired(ownerId)) {
+                log.warn("Attachment deletion rejected: user {} must select primary vehicle first", ownerId);
+                throw new PrimaryVehicleSelectionRequiredException();
+            }
+            log.warn("Attachment deletion rejected: user {} is Free", ownerId);
+            throw new UpgradeRequiredException("L'eliminazione di allegati è riservata agli utenti Premium.");
         }
 
         MaintenanceAttachment attachment = attachmentRepository.findByMaintenanceId(maintenanceId)

@@ -38,6 +38,9 @@ public class Vehicle {
     @Column(nullable = false)
     private Integer mileage;
 
+    @Column(name = "is_primary", nullable = false)
+    private boolean isPrimary = false;
+
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MaintenanceRecord> maintenances = new ArrayList<>();
 
@@ -51,6 +54,10 @@ public class Vehicle {
     }
 
     public Vehicle(User owner, VehicleIcon icon, String brand, String model, Integer year, String plate, Integer mileage) {
+        this(owner, icon, brand, model, year, plate, mileage, false);
+    }
+
+    public Vehicle(User owner, VehicleIcon icon, String brand, String model, Integer year, String plate, Integer mileage, boolean isPrimary) {
         this.id = UUID.randomUUID();
         this.owner = owner;
         this.icon = icon;
@@ -59,6 +66,7 @@ public class Vehicle {
         this.year = year;
         this.plate = plate != null ? plate.trim().toUpperCase() : null;
         this.mileage = mileage;
+        this.isPrimary = isPrimary;
     }
 
     @PrePersist
@@ -146,6 +154,14 @@ public class Vehicle {
 
     public void setMileage(Integer mileage) {
         this.mileage = mileage;
+    }
+
+    public boolean isPrimary() {
+        return isPrimary;
+    }
+
+    public void setPrimary(boolean primary) {
+        isPrimary = primary;
     }
 
     public List<MaintenanceRecord> getMaintenances() {

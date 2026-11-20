@@ -4,8 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ilmiogarage.dto.auth.RegisterRequest;
 import com.ilmiogarage.dto.maintenance.CreateMaintenanceRequest;
 import com.ilmiogarage.dto.vehicle.CreateVehicleRequest;
+import com.ilmiogarage.model.entity.PremiumGrant;
+import com.ilmiogarage.model.entity.User;
+import com.ilmiogarage.model.enums.GrantType;
 import com.ilmiogarage.model.enums.MaintenanceType;
 import com.ilmiogarage.model.enums.VehicleIcon;
+import com.ilmiogarage.repository.PremiumGrantRepository;
+import com.ilmiogarage.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -41,6 +47,12 @@ class AttachmentIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PremiumGrantRepository premiumGrantRepository;
 
     private String userToken;
     private String otherUserToken;
@@ -66,7 +78,11 @@ class AttachmentIntegrationTest {
                 .andReturn();
         userToken = objectMapper.readTree(reg.getResponse().getContentAsString()).get("accessToken").asText();
 
-        // Registra secondo utente (per test IDOR)
+        // Concede grant Premium all'utente principale per testare le operazioni di upload
+        User userOne = userRepository.findByEmail(email).orElseThrow();
+        premiumGrantRepository.save(new PremiumGrant(userOne, GrantType.DEVELOPER, Instant.now(), "System", "Test grant", null));
+
+        // Registra secondo utente (per test IDOR e utente Free)
         String otherEmail = "other.user." + UUID.randomUUID() + "@example.com";
         MvcResult regOther = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -280,5 +296,40 @@ class AttachmentIntegrationTest {
                         .header("Authorization", "Bearer " + otherUserToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("Utente Free che tenta di caricare un allegato riceve HTTP 403 con codice UPGRADE_REQUIRED")
+    void testFreeUserUpload_isForbidden() throws Exception {
+        // otherUserToken è un utente Free. Creiamo per lui un veicolo e un intervento.
+        CreateVehicleRequest vReq = new CreateVehicleRequest(
+                VehicleIcon.car, "Fiat", "Punto", 2018, "ZZ999YY", 90000);
+        MvcResult vRes = mockMvc.perform(post("/api/v1/vehicles")
+                        .header("Authorization", "Bearer " + otherUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(vReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String otherVehicleId = objectMapper.readTree(vRes.getResponse().getContentAsString()).get("id").asText();
+
+        CreateMaintenanceRequest mReq = new CreateMaintenanceRequest(
+                MaintenanceType.OIL_CHANGE, null, LocalDate.now().minusDays(2), 91000, new BigDecimal("80.00"), "Olio");
+        MvcResult mRes = mockMvc.perform(post("/api/v1/vehicles/" + otherVehicleId + "/maintenances")
+                        .header("Authorization", "Bearer " + otherUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(mReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String otherMId = objectMapper.readTree(mRes.getResponse().getContentAsString()).get("id").asText();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "fattura.pdf", "application/pdf", VALID_PDF_BYTES);
+
+        // Upload da parte dell'utente Free deve essere rifiutato con 403 UPGRADE_REQUIRED
+        mockMvc.perform(MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/maintenances/" + otherMId + "/attachment")
+                        .file(file)
+                        .header("Authorization", "Bearer " + otherUserToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("UPGRADE_REQUIRED"));
     }
 }

@@ -4,7 +4,7 @@ import com.ilmiogarage.dto.maintenance.CreateMaintenanceRequest;
 import com.ilmiogarage.dto.maintenance.MaintenanceResponse;
 import com.ilmiogarage.dto.maintenance.UpdateMaintenanceRequest;
 import com.ilmiogarage.exception.InvalidDateException;
-import com.ilmiogarage.exception.ResourceNotFoundException;
+import com.ilmiogarage.exception.UpgradeRequiredException;
 import com.ilmiogarage.exception.ValidationException;
 import com.ilmiogarage.mapper.MaintenanceMapper;
 import com.ilmiogarage.model.entity.MaintenanceRecord;
@@ -45,6 +45,9 @@ class MaintenanceServiceTest {
     @Mock
     private MaintenanceMapper maintenanceMapper;
 
+    @Mock
+    private SubscriptionService subscriptionService;
+
     @InjectMocks
     private MaintenanceService maintenanceService;
 
@@ -59,7 +62,7 @@ class MaintenanceServiceTest {
         owner = new User(ownerId, "Luigi Verdi", "luigi@example.com", "hash");
 
         vehicleId = UUID.randomUUID();
-        vehicle = new Vehicle(owner, VehicleIcon.car, "Volkswagen", "Golf", 2021, "CD456EF", 40000);
+        vehicle = new Vehicle(owner, VehicleIcon.car, "Volkswagen", "Golf", 2021, "CD456EF", 40000, true);
         vehicle.setId(vehicleId);
     }
 
@@ -107,6 +110,82 @@ class MaintenanceServiceTest {
 
         assertThat(vehicle.getMileage()).isEqualTo(40000);
         verify(vehicleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Utente Free che tenta di creare manutenzione su veicolo secondario riceve UpgradeRequiredException")
+    void createMaintenance_freeUserSecondaryVehicle_throwsUpgradeRequired() {
+        vehicle.setPrimary(false);
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest(
+                MaintenanceType.OIL_CHANGE, null, LocalDate.now().minusDays(1), 40000, new BigDecimal("80.00"), "Tagliando");
+
+        when(vehicleRepository.findByIdAndOwnerId(vehicleId, ownerId)).thenReturn(Optional.of(vehicle));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(false);
+
+        assertThatThrownBy(() -> maintenanceService.createMaintenance(vehicleId, ownerId, request))
+                .isInstanceOf(UpgradeRequiredException.class)
+                .hasMessageContaining("veicolo principale");
+
+        verify(maintenanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Utente Free può registrare BOLLO e ASSICURAZIONE sul veicolo principale")
+    void createMaintenance_freeUserBolloAndInsurance_primaryVehicle_success() {
+        CreateMaintenanceRequest bolloReq = new CreateMaintenanceRequest(
+                MaintenanceType.BOLLO, null, LocalDate.now().minusDays(1), 40000, new BigDecimal("150.00"), "Bollo 2026");
+
+        vehicle.setPrimary(true);
+        when(vehicleRepository.findByIdAndOwnerId(vehicleId, ownerId)).thenReturn(Optional.of(vehicle));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(false);
+        when(maintenanceRepository.save(any(MaintenanceRecord.class))).thenAnswer(i -> i.getArgument(0));
+        when(maintenanceMapper.toResponse(any())).thenReturn(
+                new MaintenanceResponse(UUID.randomUUID(), vehicleId, MaintenanceType.BOLLO, "Bollo",
+                        null, LocalDate.now().minusDays(1), 40000, new BigDecimal("150.00"), "Bollo 2026",
+                        Instant.now(), Instant.now()));
+
+        MaintenanceResponse response = maintenanceService.createMaintenance(vehicleId, ownerId, bolloReq);
+
+        assertThat(response).isNotNull();
+        verify(maintenanceRepository).save(any(MaintenanceRecord.class));
+    }
+
+    @Test
+    @DisplayName("Utente Free che registra BOLLO su veicolo secondario riceve UpgradeRequiredException")
+    void createMaintenance_freeUserBollo_secondaryVehicle_throwsUpgradeRequired() {
+        vehicle.setPrimary(false);
+        CreateMaintenanceRequest bolloReq = new CreateMaintenanceRequest(
+                MaintenanceType.BOLLO, null, LocalDate.now().minusDays(1), 40000, new BigDecimal("150.00"), "Bollo 2026");
+
+        when(vehicleRepository.findByIdAndOwnerId(vehicleId, ownerId)).thenReturn(Optional.of(vehicle));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(false);
+
+        assertThatThrownBy(() -> maintenanceService.createMaintenance(vehicleId, ownerId, bolloReq))
+                .isInstanceOf(UpgradeRequiredException.class)
+                .hasMessageContaining("veicolo principale");
+
+        verify(maintenanceRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Utente Premium può creare manutenzione su qualsiasi veicolo (anche non principale)")
+    void createMaintenance_premiumUserSecondaryVehicle_success() {
+        vehicle.setPrimary(false);
+        CreateMaintenanceRequest request = new CreateMaintenanceRequest(
+                MaintenanceType.TIRE_CHANGE, null, LocalDate.now().minusDays(1), 41000, new BigDecimal("350.00"), "Cambio gomme invernali");
+
+        when(vehicleRepository.findByIdAndOwnerId(vehicleId, ownerId)).thenReturn(Optional.of(vehicle));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(true);
+        when(maintenanceRepository.save(any(MaintenanceRecord.class))).thenAnswer(i -> i.getArgument(0));
+        when(maintenanceMapper.toResponse(any())).thenReturn(
+                new MaintenanceResponse(UUID.randomUUID(), vehicleId, MaintenanceType.TIRE_CHANGE, "Gomme",
+                        null, LocalDate.now().minusDays(1), 41000, new BigDecimal("350.00"), "Cambio gomme",
+                        Instant.now(), Instant.now()));
+
+        MaintenanceResponse response = maintenanceService.createMaintenance(vehicleId, ownerId, request);
+
+        assertThat(response).isNotNull();
+        verify(maintenanceRepository).save(any(MaintenanceRecord.class));
     }
 
     @Test
@@ -190,6 +269,27 @@ class MaintenanceServiceTest {
     }
 
     @Test
+    @DisplayName("Utente Free che tenta di modificare manutenzione su veicolo secondario riceve UpgradeRequiredException")
+    void updateMaintenance_freeUserSecondaryVehicle_throwsUpgradeRequired() {
+        UUID maintenanceId = UUID.randomUUID();
+        vehicle.setPrimary(false);
+        MaintenanceRecord record = new MaintenanceRecord(owner, vehicle, MaintenanceType.SERVICE, null,
+                LocalDate.now().minusDays(5), 38000, new BigDecimal("250.00"), "Tagliando");
+        record.setId(maintenanceId);
+
+        when(maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId)).thenReturn(Optional.of(record));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(false);
+
+        UpdateMaintenanceRequest updateRequest = new UpdateMaintenanceRequest(null, null, null, null, new BigDecimal("300.00"), null);
+
+        assertThatThrownBy(() -> maintenanceService.updateMaintenance(maintenanceId, ownerId, updateRequest))
+                .isInstanceOf(UpgradeRequiredException.class)
+                .hasMessageContaining("veicolo principale");
+
+        verify(maintenanceRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Regola km: eliminazione manutenzione NON riduce il chilometraggio del veicolo")
     void deleteMaintenance_doesNotDecreaseVehicleMileage() {
         UUID maintenanceId = UUID.randomUUID();
@@ -204,5 +304,24 @@ class MaintenanceServiceTest {
         assertThat(vehicle.getMileage()).isEqualTo(40000);
         verify(maintenanceRepository).delete(record);
         verify(vehicleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Utente Free che tenta di eliminare manutenzione su veicolo secondario riceve UpgradeRequiredException")
+    void deleteMaintenance_freeUserSecondaryVehicle_throwsUpgradeRequired() {
+        UUID maintenanceId = UUID.randomUUID();
+        vehicle.setPrimary(false);
+        MaintenanceRecord record = new MaintenanceRecord(owner, vehicle, MaintenanceType.SERVICE, null,
+                LocalDate.now().minusDays(5), 40000, new BigDecimal("250.00"), "Tagliando");
+        record.setId(maintenanceId);
+
+        when(maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId)).thenReturn(Optional.of(record));
+        when(subscriptionService.isPremium(ownerId)).thenReturn(false);
+
+        assertThatThrownBy(() -> maintenanceService.deleteMaintenance(maintenanceId, ownerId))
+                .isInstanceOf(UpgradeRequiredException.class)
+                .hasMessageContaining("veicolo principale");
+
+        verify(maintenanceRepository, never()).delete(any(MaintenanceRecord.class));
     }
 }

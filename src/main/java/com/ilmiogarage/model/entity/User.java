@@ -1,7 +1,9 @@
 package com.ilmiogarage.model.entity;
 
+import com.ilmiogarage.model.enums.UserRole;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -24,6 +26,13 @@ public class User {
     @Column(name = "google_sub", length = 255, unique = true)
     private String googleSub;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
+
+    @Column(name = "primary_vehicle_selected_at")
+    private Instant primaryVehicleSelectedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -38,11 +47,16 @@ public class User {
     }
 
     public User(UUID id, String name, String email, String passwordHash, String googleSub) {
+        this(id, name, email, passwordHash, googleSub, UserRole.USER);
+    }
+
+    public User(UUID id, String name, String email, String passwordHash, String googleSub, UserRole role) {
         this.id = id != null ? id : UUID.randomUUID();
         this.name = name;
         this.email = email != null ? email.trim().toLowerCase() : null;
         this.passwordHash = passwordHash;
         this.googleSub = googleSub;
+        this.role = role != null ? role : UserRole.USER;
     }
 
     @PrePersist
@@ -53,6 +67,9 @@ public class User {
         Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
+        }
+        if (this.role == null) {
+            this.role = UserRole.USER;
         }
         this.updatedAt = now;
         if (this.email != null) {
@@ -106,6 +123,24 @@ public class User {
 
     public void setGoogleSub(String googleSub) {
         this.googleSub = googleSub;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role != null ? role : UserRole.USER;
+    }
+
+    public Instant getPrimaryVehicleSelectedAt() {
+        return primaryVehicleSelectedAt;
+    }
+
+    public void setPrimaryVehicleSelectedAt(Instant primaryVehicleSelectedAt) {
+        this.primaryVehicleSelectedAt = primaryVehicleSelectedAt != null
+                ? primaryVehicleSelectedAt.truncatedTo(ChronoUnit.MICROS)
+                : null;
     }
 
     public Instant getCreatedAt() {

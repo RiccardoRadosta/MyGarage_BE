@@ -6,8 +6,13 @@ import com.ilmiogarage.dto.auth.RegisterRequest;
 import com.ilmiogarage.dto.maintenance.CreateMaintenanceRequest;
 import com.ilmiogarage.dto.vehicle.CreateVehicleRequest;
 import com.ilmiogarage.dto.vehicle.UpdateVehicleRequest;
+import com.ilmiogarage.model.entity.PremiumGrant;
+import com.ilmiogarage.model.entity.User;
+import com.ilmiogarage.model.enums.GrantType;
 import com.ilmiogarage.model.enums.MaintenanceType;
 import com.ilmiogarage.model.enums.VehicleIcon;
+import com.ilmiogarage.repository.PremiumGrantRepository;
+import com.ilmiogarage.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +45,12 @@ class OwnershipAndSecurityIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PremiumGrantRepository premiumGrantRepository;
 
     private String user1Token;
     private String user2Token;
@@ -164,6 +176,10 @@ class OwnershipAndSecurityIntegrationTest {
     @Test
     @DisplayName("Targa univoca per proprietario: due utenti diversi possono avere la stessa targa")
     void plateUniquePerOwner_crossUserAllowed_sameUserRejected() throws Exception {
+        // Concede grant Premium a User 1 in modo da poter creare un secondo veicolo
+        User u1 = userRepository.findByEmail("user1@example.com").orElseThrow();
+        premiumGrantRepository.save(new PremiumGrant(u1, GrantType.DEVELOPER, Instant.now(), "System", "Test grant", null));
+
         // User 2 registra un veicolo con la STESSA targa di User 1 ("XY987ZT") -> successo
         CreateVehicleRequest user2Vehicle = new CreateVehicleRequest(
                 VehicleIcon.car, "Mercedes", "Classe A", 2021, "xy987zt", 25000);

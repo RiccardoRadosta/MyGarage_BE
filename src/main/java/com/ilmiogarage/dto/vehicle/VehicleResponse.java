@@ -13,10 +13,16 @@ public record VehicleResponse(
         Integer year,
         String plate,
         Integer mileage,
+        boolean isPrimary,
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
         Instant createdAt,
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
         Instant updatedAt,
         LastMaintenanceSummary lastMaintenance
 ) {
+    public VehicleResponse(UUID id, VehicleIcon icon, String brand, String model, Integer year,
+                           String plate, Integer mileage, Instant createdAt, Instant updatedAt,
+                           LastMaintenanceSummary lastMaintenance) {
+        this(id, icon, brand, model, year, plate, mileage, false, createdAt, updatedAt, lastMaintenance);
+    }
 }

@@ -88,6 +88,19 @@ public class VehicleController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}/set-primary")
+    @Operation(summary = "Imposta veicolo principale", description = "Imposta il veicolo selezionato come principale per l'utente autenticato, rimuovendo il contrassegno dagli altri veicoli.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Veicolo impostato come principale con successo"),
+            @ApiResponse(responseCode = "401", description = "Non autenticato"),
+            @ApiResponse(responseCode = "404", description = "Veicolo non trovato o non appartenente all'utente")
+    })
+    public ResponseEntity<VehicleResponse> setPrimaryVehicle(@PathVariable("id") UUID vehicleId) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        VehicleResponse response = vehicleService.setPrimaryVehicle(vehicleId, currentUserId);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{vehicleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Elimina veicolo", description = "Elimina il veicolo e tutti gli interventi associati in modo transazionale.")

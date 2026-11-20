@@ -6,7 +6,9 @@ import com.ilmiogarage.dto.maintenance.MaintenanceDetailResponse;
 import com.ilmiogarage.dto.maintenance.MaintenanceResponse;
 import com.ilmiogarage.dto.maintenance.UpdateMaintenanceRequest;
 import com.ilmiogarage.exception.InvalidDateException;
+import com.ilmiogarage.exception.PrimaryVehicleSelectionRequiredException;
 import com.ilmiogarage.exception.ResourceNotFoundException;
+import com.ilmiogarage.exception.UpgradeRequiredException;
 import com.ilmiogarage.exception.ValidationException;
 import com.ilmiogarage.mapper.MaintenanceMapper;
 import com.ilmiogarage.model.entity.MaintenanceRecord;
@@ -39,20 +41,34 @@ public class MaintenanceService {
     private final MaintenanceRecordRepository maintenanceRepository;
     private final VehicleRepository vehicleRepository;
     private final MaintenanceMapper maintenanceMapper;
+    private final SubscriptionService subscriptionService;
 
     public MaintenanceService(
             MaintenanceRecordRepository maintenanceRepository,
             VehicleRepository vehicleRepository,
-            MaintenanceMapper maintenanceMapper) {
+            MaintenanceMapper maintenanceMapper,
+            SubscriptionService subscriptionService) {
         this.maintenanceRepository = maintenanceRepository;
         this.vehicleRepository = vehicleRepository;
         this.maintenanceMapper = maintenanceMapper;
+        this.subscriptionService = subscriptionService;
     }
 
     @Transactional
     public MaintenanceResponse createMaintenance(UUID vehicleId, UUID ownerId, CreateMaintenanceRequest request) {
         Vehicle vehicle = vehicleRepository.findByIdAndOwnerId(vehicleId, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Veicolo non trovato."));
+
+        if (!subscriptionService.isPremium(ownerId)) {
+            if (subscriptionService.isPrimaryVehicleSelectionRequired(ownerId)) {
+                log.warn("Maintenance creation rejected: user {} must select primary vehicle first", ownerId);
+                throw new PrimaryVehicleSelectionRequiredException();
+            }
+            if (!vehicle.isPrimary()) {
+                log.warn("Maintenance creation rejected: user {} is Free and vehicle {} is not primary", ownerId, vehicleId);
+                throw new UpgradeRequiredException("Il piano Free consente l'inserimento di interventi esclusivamente sul veicolo principale.");
+            }
+        }
 
         validateTypeAndDescription(request.type(), request.customDescription());
         validateDate(request.date());
@@ -152,6 +168,17 @@ public class MaintenanceService {
         MaintenanceRecord record = maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Intervento non trovato."));
 
+        if (!subscriptionService.isPremium(ownerId)) {
+            if (subscriptionService.isPrimaryVehicleSelectionRequired(ownerId)) {
+                log.warn("Maintenance update rejected: user {} must select primary vehicle first", ownerId);
+                throw new PrimaryVehicleSelectionRequiredException();
+            }
+            if (!record.getVehicle().isPrimary()) {
+                log.warn("Maintenance update rejected: user {} is Free and vehicle {} is not primary", ownerId, record.getVehicle().getId());
+                throw new UpgradeRequiredException("Il piano Free consente la modifica di interventi esclusivamente sul veicolo principale.");
+            }
+        }
+
         Vehicle vehicle = record.getVehicle();
 
         MaintenanceType newType = request.type() != null ? request.type() : record.getType();
@@ -203,6 +230,17 @@ public class MaintenanceService {
     public void deleteMaintenance(UUID maintenanceId, UUID ownerId) {
         MaintenanceRecord record = maintenanceRepository.findByIdAndOwnerId(maintenanceId, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Intervento non trovato."));
+
+        if (!subscriptionService.isPremium(ownerId)) {
+            if (subscriptionService.isPrimaryVehicleSelectionRequired(ownerId)) {
+                log.warn("Maintenance deletion rejected: user {} must select primary vehicle first", ownerId);
+                throw new PrimaryVehicleSelectionRequiredException();
+            }
+            if (!record.getVehicle().isPrimary()) {
+                log.warn("Maintenance deletion rejected: user {} is Free and vehicle {} is not primary", ownerId, record.getVehicle().getId());
+                throw new UpgradeRequiredException("Il piano Free consente l'eliminazione di interventi esclusivamente sul veicolo principale.");
+            }
+        }
 
         maintenanceRepository.delete(record);
         log.info("Deleted maintenance {} for user {}. Vehicle mileage was preserved.", maintenanceId, ownerId);

@@ -4,8 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ilmiogarage.dto.auth.RegisterRequest;
 import com.ilmiogarage.dto.maintenance.CreateMaintenanceRequest;
 import com.ilmiogarage.dto.vehicle.CreateVehicleRequest;
+import com.ilmiogarage.model.entity.PremiumGrant;
+import com.ilmiogarage.model.entity.User;
+import com.ilmiogarage.model.enums.GrantType;
 import com.ilmiogarage.model.enums.MaintenanceType;
 import com.ilmiogarage.model.enums.VehicleIcon;
+import com.ilmiogarage.repository.PremiumGrantRepository;
+import com.ilmiogarage.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +24,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -39,6 +45,12 @@ class DashboardAndCostIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PremiumGrantRepository premiumGrantRepository;
+
     private String token;
     private String vehicle1Id;
     private String vehicle2Id;
@@ -51,6 +63,10 @@ class DashboardAndCostIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         token = objectMapper.readTree(reg.getResponse().getContentAsString()).get("accessToken").asText();
+
+        // Concede grant Premium per consentire la creazione e gestione di veicoli multipli
+        User user = userRepository.findByEmail("dash@example.com").orElseThrow();
+        premiumGrantRepository.save(new PremiumGrant(user, GrantType.DEVELOPER, Instant.now(), "System", "Test grant", null));
 
         // Crea veicolo 1
         CreateVehicleRequest v1 = new CreateVehicleRequest(

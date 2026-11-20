@@ -5,9 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ilmiogarage.dto.auth.RegisterRequest;
 import com.ilmiogarage.dto.maintenance.CreateMaintenanceRequest;
 import com.ilmiogarage.dto.vehicle.CreateVehicleRequest;
+import com.ilmiogarage.model.entity.PremiumGrant;
+import com.ilmiogarage.model.entity.User;
+import com.ilmiogarage.model.enums.GrantType;
 import com.ilmiogarage.model.enums.MaintenanceType;
 import com.ilmiogarage.model.enums.VehicleIcon;
 import com.ilmiogarage.repository.MaintenanceRecordRepository;
+import com.ilmiogarage.repository.PremiumGrantRepository;
 import com.ilmiogarage.repository.VehicleRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -53,12 +58,16 @@ class VehicleAndCascadeIntegrationTest {
     @Autowired
     private com.ilmiogarage.repository.RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private PremiumGrantRepository premiumGrantRepository;
+
     private String token;
 
     @AfterEach
     void tearDown() {
         maintenanceRepository.deleteAll();
         vehicleRepository.deleteAll();
+        premiumGrantRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -71,6 +80,10 @@ class VehicleAndCascadeIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         token = objectMapper.readTree(reg.getResponse().getContentAsString()).get("accessToken").asText();
+
+        // Concede grant Premium per consentire l'eliminazione del veicolo
+        User user = userRepository.findByEmail("cascade@example.com").orElseThrow();
+        premiumGrantRepository.save(new PremiumGrant(user, GrantType.DEVELOPER, Instant.now(), "System", "Test grant", null));
     }
 
     @Test
